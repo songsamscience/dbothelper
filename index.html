@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>송쌤과학 디벗 업무 도우미</title>
+<meta name="description" content="학교 디벗(스마트기기) 업무를 순서대로 처리할 수 있게 돕는 실무 도우미 사이트">
+
+<!-- 파비콘: 디벗 캐릭터 (외부 파일 없이 인라인 SVG) -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='9' y='5' width='46' height='50' rx='7' fill='%23EBCB99' stroke='%234A423E' stroke-width='5'/%3E%3Crect x='15.5' y='11.5' width='33' height='37' rx='2.5' fill='none' stroke='%234A423E' stroke-width='1.6'/%3E%3Cpath d='M20 20q5-4 10 0M34 20q5-4 10 0' fill='none' stroke='%231E1A18' stroke-width='2.4' stroke-linecap='round'/%3E%3Cellipse cx='25' cy='29' rx='5' ry='6.2' fill='%231E1A18'/%3E%3Cellipse cx='39' cy='29' rx='5' ry='6.2' fill='%231E1A18'/%3E%3Cellipse cx='23.4' cy='26.6' rx='1.8' ry='2.6' fill='%23fff'/%3E%3Cellipse cx='37.4' cy='26.6' rx='1.8' ry='2.6' fill='%23fff'/%3E%3Cellipse cx='32' cy='32.5' rx='1.5' ry='1.1' fill='%231E1A18'/%3E%3Cpath d='M25.5 37a6.5 6.5 0 0 0 13 0z' fill='%23B5544F' stroke='%233A2A28' stroke-width='1.4' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<a class="skip" href="#main">본문 바로가기</a>
+
+<header id="hd">
+  <div class="hd-top">
+    <a class="brand" href="#/home" aria-label="홈으로">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 72 64">
+          <defs>
+            <clipPath id="scr"><rect x="15.5" y="11.5" width="33" height="37" rx="2.5"/></clipPath>
+          </defs>
+          <!-- 팔 -->
+          <path d="M11 27c-5 6-6 13-4 18" fill="none" stroke="#4A423E" stroke-width="2.6" stroke-linecap="round"/>
+          <path d="M50 30h7" fill="none" stroke="#4A423E" stroke-width="2.6" stroke-linecap="round"/>
+          <!-- 다리 -->
+          <path d="M25 54v6M39 54v6" stroke="#4A423E" stroke-width="3" stroke-linecap="round"/>
+          <!-- 펜 -->
+          <rect x="56" y="12" width="7" height="44" rx="3.5" fill="#4A423E"/>
+          <path d="M59.5 56l1.6 4 1.6-4z" fill="#4A423E"/>
+          <ellipse cx="57.5" cy="30" rx="5" ry="6" fill="#FFF" stroke="#4A423E" stroke-width="2"/>
+          <!-- 몸체 -->
+          <rect x="9" y="5" width="46" height="50" rx="7" fill="#EBCB99" stroke="#4A423E" stroke-width="5"/>
+          <g clip-path="url(#scr)">
+            <path d="M6 42L34 6h9L14 52z" fill="#FFF" opacity=".55"/>
+          </g>
+          <rect x="15.5" y="11.5" width="33" height="37" rx="2.5" fill="none" stroke="#4A423E" stroke-width="1.6"/>
+          <!-- 얼굴 -->
+          <path d="M20 20q5-4 10 0M34 20q5-4 10 0" fill="none" stroke="#1E1A18" stroke-width="2.4" stroke-linecap="round"/>
+          <ellipse cx="25" cy="29" rx="5" ry="6.2" fill="#1E1A18"/>
+          <ellipse cx="39" cy="29" rx="5" ry="6.2" fill="#1E1A18"/>
+          <ellipse cx="23.4" cy="26.6" rx="1.8" ry="2.6" fill="#FFF"/>
+          <ellipse cx="37.4" cy="26.6" rx="1.8" ry="2.6" fill="#FFF"/>
+          <ellipse cx="32" cy="32.5" rx="1.5" ry="1.1" fill="#1E1A18"/>
+          <path d="M25.5 37a6.5 6.5 0 0 0 13 0z" fill="#B5544F" stroke="#3A2A28" stroke-width="1.4" stroke-linejoin="round"/>
+          <circle cx="51.5" cy="30" r="1.6" fill="#2E8B72"/>
+        </svg>
+      </span>
+      <span class="brand-txt">
+        <b>송쌤과학</b>
+        <em>디벗 업무 도우미</em>
+      </span>
+    </a>
+
+    <div class="hd-actions">
+      <!-- 송쌤과학 채널 — 주소는 assets/js/data.js 맨 위 SOCIAL 에서 고칩니다.
+           빈 값으로 두면 그 버튼은 자동으로 숨겨집니다. -->
+      <a class="ico sns yt" id="snsYt" href="#" target="_blank" rel="noopener"
+         aria-label="송쌤과학 유튜브" title="송쌤과학 유튜브" hidden>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23 12s0-3.9-.5-5.8a3 3 0 0 0-2.1-2.1C18.5 3.6 12 3.6 12 3.6s-6.5 0-8.4.5A3 3 0 0 0 1.5 6.2C1 8.1 1 12 1 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 8.4.5 8.4.5s6.5 0 8.4-.5a3 3 0 0 0 2.1-2.1C23 15.9 23 12 23 12zM9.8 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>
+      </a>
+      <a class="ico sns ig" id="snsIg" href="#" target="_blank" rel="noopener"
+         aria-label="송쌤과학 인스타그램" title="송쌤과학 인스타그램" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r="1.2" fill="currentColor" stroke="none"/></svg>
+      </a>
+
+      <button class="ico" id="themeBtn" type="button" aria-label="밝은/어두운 화면 전환" title="화면 모드 전환">
+        <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.5 1.5M17.6 17.6l1.5 1.5M19.1 4.9l-1.5 1.5M6.4 17.6l-1.5 1.5"/></svg>
+        <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>
+      </button>
+
+      <button class="ico only-mobile" id="navBtn" type="button" aria-label="메뉴 열기" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <nav id="nav" aria-label="주요 메뉴">
+    <div class="nav-scroll" id="navScroll"><!-- app.js가 채움 --></div>
+  </nav>
+</header>
+
+<main id="main">
+  <div id="view" class="view"><!-- app.js가 채움 --></div>
+</main>
+
+<footer id="ft">
+  <div class="ft-in">
+    <p><b>송쌤과학 디벗 업무 도우미</b> — 학교 현장에서 바로 쓰는 디벗 업무 절차 안내</p>
+    <p class="ft-src"><b>첨부자료 출처</b> — 아주중 송T · 명지중 임T · 서울특별시교육청 창의미래교육과</p>
+    <p class="ft-sub">첨부 파일은 <code>assets/files/</code>, 이미지는 <code>assets/img/</code> 폴더에 넣으면 자동으로 연결됩니다.</p>
+  </div>
+</footer>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
