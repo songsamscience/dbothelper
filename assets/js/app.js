@@ -758,8 +758,11 @@
         .map(s => '<w:' + s + ' w:val="single" w:sz="6" w:color="AAB8C4"/>').join('') +
       '</w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr>' +
       '<w:tblGrid>' + px.map(v => '<w:gridCol w:w="' + v + '"/>').join('') + '</w:tblGrid>';
-    b.rows.forEach(tr => {
-      x += '<w:tr>';
+    b.rows.forEach((tr, ri) => {
+      /* 머리글 줄은 장이 넘어갈 때마다 다시 찍는다.
+         cantSplit 은 넣지 않는다 — 넣으면 한 줄이 한 장보다 길 때 잘려 나간다. */
+      const head = ri === 0 && tr.cells.some(c => c && c.head);
+      x += '<w:tr>' + (head ? '<w:trPr><w:tblHeader/></w:trPr>' : '');
       for (let ci = 0; ci < cols; ci++) {
         const td = tr.cells[ci] || { head: false, runs: [] };
         x += '<w:tc><w:tcPr><w:tcW w:w="' + pct[ci] + '" w:type="pct"/>' +
@@ -951,7 +954,7 @@
       let x = '<hp:p id="0" paraPrIDRef="' + PP_TIGHT + '" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0">' +
         '<hp:run charPrIDRef="' + CP_BASE + '">' +
         '<hp:tbl id="' + (++tblSeq) + '" zOrder="0" numberingType="TABLE" textWrap="TOP_AND_BOTTOM"' +
-        ' textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="TABLE" repeatHeader="1"' +
+        ' textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="CELL" repeatHeader="1"' +
         ' rowCnt="' + rows.length + '" colCnt="' + cols + '" cellSpacing="0"' +
         ' borderFillIDRef="' + CELL_BF + '" noAdjust="0">' +
         '<hp:sz width="' + tw + '" widthRelTo="ABSOLUTE" height="' + (rh * rows.length) +
@@ -2982,7 +2985,8 @@ numbered,
 body{font-family:'IBM Plex Sans KR','Gothic A1','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
  color:#000;background:#fff;
  word-break:keep-all;overflow-wrap:break-word;line-break:strict}
-.page{width:210mm;height:297mm;padding:20mm 20mm 14mm;position:relative;page-break-after:always;overflow:hidden}
+/* 넘치면 잘라 내지 않고 다음 장으로 흘려보낸다 — 잘라 내면 인쇄물에서 소리 없이 사라진다 */
+.page{width:210mm;min-height:297mm;padding:20mm 20mm 14mm;position:relative;page-break-after:always}
 .page:last-child{page-break-after:auto}
 .copylb{position:absolute;top:9mm;right:20mm;font-size:3.2mm;color:#555;
  border:.3mm solid #888;border-radius:1mm;padding:.8mm 2.5mm}
@@ -3587,7 +3591,8 @@ th em{display:block;font-style:normal;font-size:3.3mm;color:#333;margin-top:.8mm
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:'IBM Plex Sans KR','Gothic A1','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
  color:#111;background:#fff;word-break:keep-all;overflow-wrap:break-word;line-break:strict}
-.page{width:210mm;height:297mm;padding:18mm 18mm 14mm;position:relative;overflow:hidden}
+/* 넘치면 잘라 내지 않고 다음 장으로 흘려보낸다 — 잘라 내면 인쇄물에서 소리 없이 사라진다 */
+.page{width:210mm;min-height:297mm;padding:18mm 18mm 14mm;position:relative}
 .ph{font-size:3.6mm;color:#5A6674;margin-bottom:3mm}
 .ph b{font-family:'Gothic A1',sans-serif;font-weight:800;color:#0F6FB8;font-size:4.4mm}
 h1{font-family:'Gothic A1',sans-serif;font-size:11mm;font-weight:800;text-align:center;
@@ -4175,7 +4180,8 @@ th{width:36mm;background:#EDF3F9;font-weight:700;line-height:1.45}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:'IBM Plex Sans KR','Gothic A1','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
  color:#111;background:#fff;word-break:keep-all;overflow-wrap:break-word;line-break:strict}
-.page{width:210mm;height:297mm;padding:18mm 18mm 14mm;position:relative;overflow:hidden}
+/* 넘치면 잘라 내지 않고 다음 장으로 흘려보낸다 — 잘라 내면 인쇄물에서 소리 없이 사라진다 */
+.page{width:210mm;min-height:297mm;padding:18mm 18mm 14mm;position:relative}
 .ph{font-size:3.6mm;color:#5A6674;margin-bottom:3mm}
 .ph b{font-family:'Gothic A1',sans-serif;font-weight:800;color:#B07C0A;font-size:4.4mm}
 h1{font-family:'Gothic A1',sans-serif;font-size:11mm;font-weight:800;text-align:center;
@@ -4558,9 +4564,14 @@ ruleTxt,
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:'IBM Plex Sans KR','Gothic A1','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
  color:#1B2430;background:#fff;word-break:keep-all;overflow-wrap:break-word;line-break:strict}
-.page{width:210mm;height:297mm;padding:16mm 16mm 12mm;position:relative;page-break-after:always;overflow:hidden;
+/* height + overflow:hidden 이면 한 장을 넘는 내용이 통째로 잘려 나간다.
+   목록이 길어지면 표 뒷부분이 인쇄물에서 사라지므로 min-height 로 두고 흘려보낸다. */
+.page{width:210mm;min-height:297mm;padding:16mm 16mm 12mm;position:relative;page-break-after:always;
  display:flex;flex-direction:column}
 .page:last-child{page-break-after:auto}
+/* 내용이 길어 여러 장으로 넘어가는 장 — 장 나누기가 어긋나지 않게 보통 흐름으로 둔다 */
+.page.flow{display:block}
+.page.flow .note{margin-top:6mm}
 .ph{display:flex;align-items:center;gap:3mm;padding-bottom:3mm;margin-bottom:6mm;border-bottom:1mm solid #0F6FB8}
 .ph b{font-family:'Gothic A1',sans-serif;font-size:6mm;font-weight:800;letter-spacing:-.02em;color:#0F6FB8}
 .ph i{margin-left:auto;font-style:normal;font-size:3.4mm;color:#7A8894}
@@ -4580,6 +4591,9 @@ body{font-family:'IBM Plex Sans KR','Gothic A1','Malgun Gothic','Apple SD Gothic
 .sec.g .li::before{background:#1F7A5B}.sec.o .li::before{background:#C0392B}
 .sec.p .li::before{background:#6B4FBF}.sec.y .li::before{background:#96690A}
 table{width:100%;border-collapse:collapse;font-size:3.7mm}
+/* 표가 여러 장에 걸칠 때 — 머리글은 장마다 다시 찍고, 한 줄이 반으로 갈리지 않게 한다 */
+thead{display:table-header-group}
+tr{break-inside:avoid;page-break-inside:avoid}
 th,td{border:.3mm solid #C9D6E2;padding:2.2mm 3mm;text-align:left;vertical-align:top;line-height:1.45}
 th{background:#EDF3F9;font-weight:700;white-space:nowrap}
 td.n{white-space:nowrap;font-weight:600}
@@ -5547,6 +5561,21 @@ body,
     return docShell(school + ' ' + st.year + '학년도 학습지원 소프트웨어 선정 계획(안)', SW_CSS, body);
   }
 
+  /* 심의 요청 목록의 표 줄 — 교과 순서를 지키면서 한 줄에 한 종씩, 번호를 이어 붙인다 */
+  function swListRows(bySub) {
+    const out = [];
+    let no = 0;
+    Object.keys(bySub).forEach(sub => {
+      bySub[sub].forEach(i => {
+        out.push('<tr><td class="n">' + (++no) + '</td>' +
+                 '<td class="n">' + esc(sub) + '</td>' +
+                 '<td>' + esc(i.name) + '</td>' +
+                 '<td class="n">모두 충족</td></tr>');
+      });
+    });
+    return out.join('');
+  }
+
   function swReviewDoc(st, p) {
     const school = pfv(p, 'school') || '○○학교';
     const dept = pfv(p, 'dept') || '담당 부서';
@@ -5584,18 +5613,21 @@ body,
       eduFoot(p, '학운위 심의(안)') +
     '</div>';
 
-    // 심의 요청 목록
-    body += '<div class="page">' +
+    /* 심의 요청 목록은 종수에 따라 여러 장으로 늘어난다.
+       세로 정렬(flex)을 그대로 두면 인쇄할 때 장 나누기가 어긋나는 브라우저가 있어
+       이 장만 보통 흐름(block)으로 둔다. */
+    body += '<div class="page flow">' +
       '<div class="ph"><b>심의 요청 목록</b><i>총 ' + items.length + '종</i></div>' +
       '<div class="dot">본교 ' + esc(st.year) + '학년도 활용 예정인 학습지원 소프트웨어 <b>총 ' + items.length + '종</b> ' +
         '(에듀집 기준일 ' + esc(st.edzipDate) + ' / 에듀집 탑재 자료 : https://edzip.kr/)</div>' +
-      '<table><tr><th style="width:30mm">관련 교과</th><th>제품·서비스명</th>' +
-        '<th style="width:22mm">기준 충족</th></tr>' +
-      Object.keys(bySub).map(sub =>
-        '<tr><td class="n">' + esc(sub) + '</td><td>' +
-        esc(bySub[sub].map(i => i.name).join(', ')) + '</td>' +
-        '<td class="n">모두 충족</td></tr>').join('') +
-      '</table>' +
+      /* 예전에는 교과별로 이름을 한 칸에 쉼표로 몰아넣었다. 종수가 많아지면
+         그 한 칸이 한 장보다 길어지는데, 한글도 워드도 «칸 하나»는 장을 넘겨 쪼개지 못해
+         뒷부분이 통째로 잘려 나갔다. 한 줄에 한 종씩 두면 줄 단위로 넘어간다. */
+      '<table><thead><tr><th style="width:14mm">번호</th>' +
+        '<th style="width:30mm">관련 교과</th><th>제품·서비스명</th>' +
+        '<th style="width:22mm">기준 충족</th></tr></thead><tbody>' +
+      swListRows(bySub) +
+      '</tbody></table>' +
       '<div class="note"><b>선정 의견</b> — 해당 학습지원 소프트웨어는 에듀집에 등록된 자료 중 ' +
         '<b>필수기준을 모두 충족</b>하였으며, 교사들의 원활한 수업 활동을 위해 필요한 제품으로 선정함. ' +
         '체크리스트와 증빙자료는 에듀집 사이트 및 별도 파일로 제공함.</div>' +
