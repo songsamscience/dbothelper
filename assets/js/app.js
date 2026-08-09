@@ -1929,6 +1929,40 @@
       return h;
     },
 
+    edzipgen(b) {
+      let h = '<section class="block rulegen" id="ezGen"><h2>' +
+              (b.title || '에듀집 확인완료 목록 조회') + '<span class="cnt" id="ezCount"></span></h2>';
+
+      h += '<div class="note info"><span class="n-em">🏛️</span><div class="n-wrap">' +
+           '<b class="n-t">에듀집에서 바로 받아옵니다</b><div class="n-b">' +
+           '교육부 <b>에듀집</b>의 「학습지원 소프트웨어」 가운데 <b>확인완료</b>인 것만 모아 ' +
+           '<b>구분 · 서비스명 · 공급자 · 작성일</b> 네 칸짜리 엑셀로 만듭니다. ' +
+           '누를 때마다 <b>그 시점의 최신 목록</b>을 받아오고, 받아 둔 목록은 이 브라우저에 남아 ' +
+           '다음에 들어와도 그대로 보입니다.' +
+           '</div></div></div>';
+
+      h += '<div class="rg-actions">' +
+           '<button type="button" class="rg-btn" id="ezLoad">🔄 에듀집에서 최신 목록 불러오기</button>' +
+           '<a class="rg-btn ghost" href="https://edzip.kr/learning-sw" target="_blank" rel="noopener">' +
+             '🏛️ 에듀집에서 직접 보기</a>' +
+           '</div>' +
+           '<div class="ez-state" id="ezState"></div>';
+
+      h += '<div class="rg-pick"><div class="rg-row"><span class="rg-lb">구분</span>' +
+           '<div class="rg-seg" data-seg="cls" id="ezCls">' +
+           '<button type="button" data-v="">전체</button>' +
+           Object.keys(EZ_CLASS).map(k =>
+             '<button type="button" data-v="' + k + '">' + EZ_CLASS[k] + '</button>').join('') +
+           '</div></div></div>';
+
+      h += '<label class="rg-f"><span>검색 <em>— 서비스명 · 공급자에서 찾습니다. 여러 개는 쉼표로 구분</em></span>' +
+           '<input type="text" id="ezQ" placeholder="예: 패들렛, 캔바, 클래스팅"></label>';
+
+      h += '<div id="ezOut" class="rg-out"></div>';
+      h += '</section>';
+      return h;
+    },
+
     swgen(b) {
       SW.defaults = b.defaults || {};
       const F = [
@@ -1975,13 +2009,13 @@
       });
       h += '</div>';
 
+      /* 목록이 1,000줄을 넘어갈 수 있어서, 누를 것을 모두 위로 올리고
+         길게 늘어지는 「인식 결과」는 맨 아래로 내렸다.
+         버튼을 찾으려고 표를 한참 스크롤해 내려갈 일이 없게 한다. */
+      h += '<div class="rg-actions" id="swActs"></div>';
+      h += '<div id="swOut" class="rg-out"></div>';
       h += '<div id="swParsed" class="sw-parsed"></div>';
-
-      h += '<div class="rg-actions">' +
-           '<button type="button" class="rg-btn ghost" id="swReset">처음 예시로 되돌리기</button>' +
-           '<button type="button" class="rg-btn ghost" id="swClear">목록 비우기</button>' +
-           '</div>';
-      h += '<div id="swOut" class="rg-out"></div></section>';
+      h += '</section>';
       return h;
     },
 
@@ -2228,7 +2262,7 @@
     const gens = new Set();
     PAGES.forEach(p => (p.blocks || []).forEach(b => {
       if (b.t === 'files') (b.items || []).forEach(i => files.add(i.path));
-      if (['rulegen', 'returngen', 'edugen', 'swgen'].indexOf(b.t) > -1) gens.add(b.t);
+      if (['rulegen', 'returngen', 'edugen', 'swgen', 'edzipgen'].indexOf(b.t) > -1) gens.add(b.t);
     }));
 
     let h = '';
@@ -2345,6 +2379,7 @@
     csInit();
     eduInit();
     swInit();
+    ezInit();
 
     // 줄바꿈 다듬기 · 화면에 들어오는 순서대로 떠오르게
     tidyBreaks($('#view'));
@@ -5343,6 +5378,37 @@ body,
 
   /* 소프트웨어 목록 파싱 — "이름" 또는 "이름 | 교과 | 활용 목적"
      교과·목적을 비워 두면 이름 사전에서 채운다. */
+  /* 이름 목록을 학운위 「소프트웨어 목록」에 넣는다.
+     replace 가 참이면 적혀 있던 줄을 지우고 새로 채운다(에듀집 목록 넣기).
+     거짓이면 있던 줄은 그대로 두고 없는 이름만 뒤에 붙인다(자주 쓰는 제품 단추).
+     돌려주는 값은 실제로 들어간 줄 수, -1 이면 이 페이지에 학운위 생성기가 없다는 뜻. */
+  function swPutNames(names, replace) {
+    const st = SW.st;
+    if (!st) return -1;
+    const wrap = $('#swGen');
+    const cur = replace ? '' : (st.swList || '').replace(/\s+$/, '');
+    const have = {};
+    cur.split('\n').forEach(l => {
+      const k = swNorm((l.split('|')[0] || ''));
+      if (k) have[k] = 1;
+    });
+    const add = [];
+    (names || []).forEach(n => {
+      const nm = String(n || '').trim();
+      const k = swNorm(nm);
+      if (!k || have[k]) return;              // 같은 이름이 두 번 들어가지 않게
+      have[k] = 1;
+      add.push(nm);
+    });
+    if (!add.length && !replace) return 0;
+    st.swList = cur ? cur + '\n' + add.join('\n') : add.join('\n');
+    const ta = wrap && $('[data-s="swList"]', wrap);
+    if (ta) { ta.value = st.swList; ta.scrollTop = 0; }
+    swSave(st);
+    swRender(st);
+    return add.length;
+  }
+
   function swItems(st) {
     return pfRows(st.swList).map(r => {
       const name = (r[0] || '').trim();
@@ -5678,8 +5744,15 @@ body,
         '</div></div></div>';
   }
 
+  /* 어느 자료 종류에서든 함께 붙는 목록 손보기 단추 */
+  function swEditBtns() {
+    return '<span class="rg-sep" aria-hidden="true"></span>' +
+           '<button type="button" class="rg-btn ghost" id="swReset">처음 예시로 되돌리기</button>' +
+           '<button type="button" class="rg-btn ghost" id="swClear">목록 비우기</button>';
+  }
+
   function swRender(st) {
-    const out = $('#swOut');
+    const out = $('#swOut'), acts = $('#swActs');
     if (!out) return;
     const p = pfGet();
     const items = swItems(st);
@@ -5696,11 +5769,10 @@ body,
     if (st.kind === 'xlsx') {
       const sheets = swXlsxSheets(st, p);
       SW.sheets = sheets;
+      if (acts) acts.innerHTML =
+        '<button type="button" class="rg-btn excel" id="swXlsx">📊 엑셀(.xlsx) 내려받기</button>' + swEditBtns();
       out.innerHTML =
         '<div class="rg-outhead"><b>엑셀 자료</b><span>시트 3개 · 소프트웨어 ' + items.length + '종</span></div>' +
-        '<div class="rg-actions">' +
-          '<button type="button" class="rg-btn excel" id="swXlsx">📊 엑셀(.xlsx) 내려받기</button>' +
-        '</div>' +
         '<div class="tbl-wrap"><table><tr><th>시트</th><th>내용</th></tr>' +
         sheets.map(s => '<tr><td><b>' + esc(s.name) + '</b></td><td>' +
           (s.rows.length - 4 > 0 ? (s.rows.length - 4) + '행 ' : '') + '작성됨</td></tr>').join('') +
@@ -5717,14 +5789,13 @@ body,
     const doc = st.kind === 'review' ? swReviewDoc(st, p) : swPlanDoc(st, p);
     SW.doc = doc;
     const label = st.kind === 'review' ? '학운위 심의(안)' : '선정 계획(안)';
+    if (acts) acts.innerHTML =
+      '<button type="button" class="rg-btn word" id="swDocx">📝 워드(.docx) 내려받기</button>' +
+      '<button type="button" class="rg-btn hwp" id="swHwpx">🅷 한글(.hwpx) 내려받기</button>' +
+      '<button type="button" class="rg-btn" id="swPrint">🖨️ 인쇄 · PDF로 저장</button>' +
+      '<button type="button" class="rg-btn ghost" id="swDl">⬇️ HTML 파일로 내려받기</button>' + swEditBtns();
     out.innerHTML =
       '<div class="rg-outhead"><b>미리보기</b><span>A4 세로 · ' + label + ' · 소프트웨어 ' + items.length + '종</span></div>' +
-      '<div class="rg-actions">' +
-        '<button type="button" class="rg-btn word" id="swDocx">📝 워드(.docx) 내려받기</button>' +
-        '<button type="button" class="rg-btn hwp" id="swHwpx">🅷 한글(.hwpx) 내려받기</button>' +
-        '<button type="button" class="rg-btn" id="swPrint">🖨️ 인쇄 · PDF로 저장</button>' +
-        '<button type="button" class="rg-btn ghost" id="swDl">⬇️ HTML 파일로 내려받기</button>' +
-      '</div>' +
       '<div class="rg-frame"><iframe id="swFrame" title="' + label + ' 미리보기"></iframe></div>';
     const f = $('#swFrame');
     f.setAttribute('srcdoc', doc);
@@ -5736,6 +5807,7 @@ body,
     const wrap = $('#swGen');
     if (!wrap) return;
     let st = swLoad();
+    SW.st = st;          // 에듀집 목록에서 이름을 넘겨받을 때 쓴다
 
     SW_FIELDS.forEach(k => {
       const el = $('[data-s="' + k + '"]', wrap);
@@ -5817,7 +5889,248 @@ body,
     window.addEventListener('resize', () => fitFrame('swFrame', 794, 1123));
   }
 
+  /* =========================================================
+     ⑧ 에듀집 「확인완료」 학습지원 소프트웨어 목록 조회 · 엑셀
+     ---------------------------------------------------------
+     교육부 에듀집(edzip.kr) 목록 화면이 쓰는 공개 API를 그대로 부른다.
+     응답에 Access-Control-Allow-Origin: * 이 붙어 있어 서버 없이
+     브라우저에서 바로 받아올 수 있다 — 깃허브 페이지에서도 동작한다.
+     받아 온 목록은 브라우저에 남겨 두어 다음에 들어와도 다시 받지 않아도 된다.
+     ========================================================= */
+  const EZ_KEY  = 'debut.edzip';
+  const EZ_API  = 'https://api.edzip.kr/self-inspection/free';
+  const EZ_PAGE = 200;                 // 한 번에 200건 — 1,700여 건이면 아홉 번이면 끝난다
+  const EZ_LINK = 'https://edzip.kr/utilization/learning-sw/';
+  const EZ_CLASS = {
+    public_including_city_province: '공공(시도포함)',
+    ai_digital_educational_materials: 'AI·디지털 교육자료',
+    private_domestic: '민간(국산)',
+    private_foreign: '민간(외산)',
+    other: '기타(교사 등 개인)'
+  };
+  /* 한 줄 = [구분, 서비스명, 공급자, 작성일, 에듀집 링크]
+     엑셀에는 앞의 네 칸만 나가고, 링크는 미리보기에서 증빙을 열어 보는 데 쓴다 */
+  const EZ = { rows: [], at: '', src: '', cls: '', q: '' };
+
+  function ezRestore() {
+    try {
+      const o = JSON.parse(lsGet(EZ_KEY) || 'null');
+      if (o && Array.isArray(o.rows) && o.rows.length) {
+        EZ.rows = o.rows; EZ.at = o.at || ''; EZ.src = o.src || '';
+      }
+    } catch (e) {}
+  }
+  function ezStore() {
+    lsSet(EZ_KEY, JSON.stringify({ rows: EZ.rows, at: EZ.at, src: EZ.src }));
+  }
+
+  // 에듀집 화면이 보여 주는 「작성일」은 한국 시간 기준 날짜다
+  function ezDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso).slice(0, 10).replace(/-/g, '.');
+    const k = new Date(d.getTime() + 9 * 3600 * 1000);
+    return k.getUTCFullYear() + '.' +
+           String(k.getUTCMonth() + 1).padStart(2, '0') + '.' +
+           String(k.getUTCDate()).padStart(2, '0');
+  }
+  const ezNow = () => {
+    const d = new Date();
+    return d.getFullYear() + '. ' + (d.getMonth() + 1) + '. ' + d.getDate() + '. ' +
+           String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  };
+
+  /* ---- 에듀집에서 받아오기 ---- */
+  async function ezFetchAll(onStep) {
+    const rows = [];
+    let skip = 0, total = 0, guard = 0;
+    for (;;) {
+      const url = EZ_API + '?keywordOption=all&verificationStatus=confirmed' +
+                  '&limit=' + EZ_PAGE + '&skip=' + skip;
+      const res = await fetch(url, { headers: { accept: 'application/json' } });
+      if (!res.ok) throw new Error('에듀집이 응답하지 않습니다 (' + res.status + ')');
+      const j = await res.json();
+      const data = (j && j.data) || [];
+      if (j && j.paging && j.paging.total) total = j.paging.total;
+      data.forEach(r => {
+        const name = (r.productName || (r.product && r.product.name) || '').trim();
+        if (!name) return;
+        rows.push([
+          EZ_CLASS[r.classification] || r.classification || '',
+          name,
+          (((r.company && r.company.name) || r.companyName) || '').trim(),
+          ezDate(r.modifiedAt || r.updatedAt || r.createdAt),
+          r.id ? EZ_LINK + r.id : ''
+        ]);
+      });
+      if (onStep) onStep(rows.length, total);
+      if (!data.length || !j.paging || j.paging.last) break;
+      skip += EZ_PAGE;
+      if (++guard > 80) break;                    // 혹시 모를 무한 반복 차단
+    }
+    return rows;
+  }
+
+  /* ---- 걸러 보기 ---- */
+  function ezFiltered() {
+    const q = String(EZ.q || '').split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+    return EZ.rows.filter(r => {
+      if (EZ.cls && r[0] !== EZ_CLASS[EZ.cls]) return false;
+      if (!q.length) return true;
+      const hay = (r[1] + ' ' + r[2]).toLowerCase();
+      return q.some(t => hay.indexOf(t) > -1);
+    });
+  }
+
+  function ezSheets(list) {
+    const rows = [[{ v: '구분', h: true }, { v: '서비스명', h: true },
+                   { v: '공급자', h: true }, { v: '작성일', h: true }]];
+    list.forEach(r => rows.push([r[0], r[1], r[2], r[3]]));
+    return [{ name: '확인완료 목록', cols: [18, 46, 30, 14], rows: rows }];
+  }
+
+  function ezRender() {
+    const out = $('#ezOut');
+    if (!out) return;
+
+    $$('#ezCls button').forEach(b =>
+      b.classList.toggle('on', (b.getAttribute('data-v') || '') === EZ.cls));
+
+    const cnt = $('#ezCount');
+    if (cnt) cnt.textContent = EZ.rows.length ? EZ.rows.length.toLocaleString() + '종' : '';
+
+    if (!EZ.rows.length) {
+      out.innerHTML = '<div class="note warn"><span class="n-em">📭</span><div class="n-wrap">' +
+        '<b class="n-t">아직 목록이 없습니다</b><div class="n-b">' +
+        '위의 <b>에듀집에서 최신 목록 불러오기</b>를 누르면 그 시점의 확인완료 항목을 모두 받아옵니다. ' +
+        '1,700여 종이라 20~30초쯤 걸리고, 한 번 받아 두면 이 브라우저에 남아 ' +
+        '다음에 들어와도 그대로 보입니다.' +
+        '</div></div></div>';
+      return;
+    }
+
+    const list = ezFiltered();
+    const cap = 60;
+    let h = '<div class="rg-outhead"><b>목록</b><span>' +
+            '전체 ' + EZ.rows.length.toLocaleString() + '종 중 <b>' + list.length.toLocaleString() + '종</b>' +
+            (EZ.at ? ' · ' + esc(EZ.at) + ' 기준' : '') +
+            '</span></div>';
+
+    h += '<div class="rg-actions">' +
+         '<button type="button" class="rg-btn" id="ezXlsx">📊 엑셀(.xlsx) 내려받기 <small>구분 · 서비스명 · 공급자 · 작성일</small></button>' +
+         ($('#swGen')
+           ? '<button type="button" class="rg-btn" id="ezToSw">🔁 학운위 목록에 넣기 <small>받아 온 ' +
+             EZ.rows.length.toLocaleString() + '종으로 바꿔 넣기</small></button>'
+           : '') +
+         '</div>';
+
+    if (!list.length) {
+      h += '<div class="note warn"><span class="n-em">🔍</span><div class="n-wrap">' +
+           '<b class="n-t">찾는 이름이 없습니다</b><div class="n-b">' +
+           '검색어를 지우거나 구분을 <b>전체</b>로 바꿔 보세요. ' +
+           '에듀집에 아직 올라오지 않은 소프트웨어라면 <b>「미등록 자료 요청」</b> 게시판으로 등록을 요청할 수 있습니다.' +
+           '</div></div></div>';
+      out.innerHTML = h;
+      return;
+    }
+
+    h += '<div class="tbl-wrap"><table><thead><tr>' +
+         '<th>구분</th><th>서비스명</th><th>공급자</th><th>작성일</th>' +
+         '</tr></thead><tbody>';
+    list.slice(0, cap).forEach(r => {
+      const nm = r[4] ? '<a href="' + esc(r[4]) + '" target="_blank" rel="noopener">' + esc(r[1]) + '</a>'
+                      : esc(r[1]);
+      h += '<tr><td>' + esc(r[0]) + '</td><td>' + nm + '</td><td>' + esc(r[2]) + '</td><td>' + esc(r[3]) + '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    if (list.length > cap) {
+      h += '<p class="ez-more">화면에는 ' + cap + '종까지만 보여 줍니다 — <b>엑셀에는 ' +
+           list.length.toLocaleString() + '종이 모두 들어갑니다.</b></p>';
+    }
+    out.innerHTML = h;
+  }
+
+  function ezInit() {
+    const wrap = $('#ezGen');
+    if (!wrap) return;
+    ezRestore();
+
+    const state = $('#ezState');
+    const say = (txt, cls) => { if (state) { state.innerHTML = txt; state.className = 'ez-state ' + (cls || ''); } };
+    const busy = on => {
+      $$('#ezGen .rg-btn').forEach(b => { b.disabled = on; });
+    };
+
+    const done = src => {
+      EZ.at = ezNow();
+      EZ.src = src;
+      ezStore();
+      ezRender();
+      say('✅ 에듀집에서 ' + EZ.rows.length.toLocaleString() + '종을 받았습니다', 'ok');
+    };
+
+    wrap.addEventListener('click', async e => {
+      if (e.target.closest('#ezLoad')) {
+        busy(true);
+        say('에듀집에서 받아오는 중…');
+        try {
+          EZ.rows = await ezFetchAll((n, t) =>
+            say('에듀집에서 받아오는 중… <b>' + n.toLocaleString() +
+                (t ? ' / ' + t.toLocaleString() : '') + '종</b>'));
+          done('api');
+        } catch (err) {
+          say('⚠️ ' + esc(err.message || '받아오지 못했습니다') +
+              ' — 학교망에서 막혔을 수 있습니다. 잠시 뒤 다시 누르거나 ' +
+              '<b>에듀집에서 직접 보기</b>로 확인하세요.', 'bad');
+        }
+        busy(false);
+        return;
+      }
+      const seg = e.target.closest('#ezCls button');
+      if (seg) { EZ.cls = seg.getAttribute('data-v') || ''; ezRender(); return; }
+      if (e.target.closest('#ezToSw')) {
+        /* 화면에서 걸러 보고 있더라도 「받아 온 목록 전체」를 넣는다.
+           그리고 적혀 있던 줄은 지우고 새로 채운다 — 이어 붙이면 지난번 목록이
+           섞여 남아 무엇이 이번 심의 대상인지 알 수 없게 된다. */
+        const list = EZ.rows;
+        if (!$('#swGen')) { say('이 페이지에 「학운위 자료 만들기」가 없습니다.', 'bad'); return; }
+        /* 손으로 적어 둔 줄까지 사라지는 자리라 비어 있지 않을 때만 한 번 묻는다 */
+        const had = pfRows((SW.st && SW.st.swList) || '').length;
+        if (had && !window.confirm(
+              '학운위 목록에 적혀 있는 ' + had.toLocaleString() + '줄을 지우고\n' +
+              '에듀집에서 받아 온 ' + list.length.toLocaleString() + '종으로 바꿉니다.\n\n' +
+              '직접 적어 둔 「제품명 | 관련 교과 | 활용 목적」도 함께 지워집니다.')) return;
+        say('학운위 목록을 바꾸는 중… <b>' + list.length.toLocaleString() + '종</b>');
+        const n = swPutNames(list.map(r => r[1]), true);
+        if (n > 0) {
+          const dup = list.length - n;
+          say('🔁 학운위 목록을 ' + n.toLocaleString() + '종으로 바꿨습니다' +
+              (dup > 0 ? ' <b>(이름이 겹치는 ' + dup.toLocaleString() + '종 제외)</b>' : ''), 'ok');
+          const g = $('#swGen');
+          if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          say('학운위 자료 만들기를 찾지 못했습니다', 'bad');
+        }
+        return;
+      }
+      if (e.target.closest('#ezXlsx')) {
+        const list = ezFiltered();
+        const tag = EZ.cls ? '_' + EZ_CLASS[EZ.cls] : '';
+        downloadXlsx('에듀집_확인완료_학습지원SW' + tag + '.xlsx', ezSheets(list));
+      }
+    });
+
+    const q = $('#ezQ', wrap);
+    if (q) q.addEventListener('input', () => { EZ.q = q.value; ezRender(); });
+
+    if (EZ.rows.length) say('저장해 둔 목록 ' + EZ.rows.length.toLocaleString() + '종' +
+                            (EZ.at ? ' · ' + esc(EZ.at) + ' 기준' : ''), 'ok');
+    ezRender();
+  }
+
   /* ---------- 내비 ---------- */
+  const NAV_NUDGED = 'debut.navhint';
+
   function buildNav() {
     const wrap = $('#navScroll');
     let h = '<a class="nav-item" href="#/home" data-id="home"><span class="em">🏠</span>홈</a>';
@@ -5826,6 +6139,57 @@ body,
            '<span class="em">' + p.em + '</span>' + p.short + '</a>';
     });
     wrap.innerHTML = h;
+    navScrollUI(wrap);
+  }
+
+  /* 메뉴가 화면보다 길다는 것을 눈으로 알 수 있게 —
+     끝 흐림 · 화살표 단추 · 남은 양 막대를 붙이고 스크롤에 맞춰 갱신한다. */
+  function navScrollUI(wrap) {
+    const nav = $('#nav');
+    if (!nav || nav.querySelector('.nav-bar')) { navScrollSync(); return; }
+
+    const arrow = (side, d) =>
+      '<button type="button" class="nav-ar ' + side + '" data-nav="' + side + '" ' +
+      'tabindex="-1" aria-hidden="true">' +
+      '<svg viewBox="0 0 24 24"><path d="' + d + '"/></svg></button>';
+
+    nav.insertAdjacentHTML('beforeend',
+      arrow('l', 'M15 5l-7 7 7 7') + arrow('r', 'M9 5l7 7-7 7') +
+      '<div class="nav-bar"><i></i></div>');
+
+    nav.addEventListener('click', e => {
+      const b = e.target.closest('[data-nav]');
+      if (!b) return;
+      const step = Math.max(120, Math.round(wrap.clientWidth * 0.8));
+      wrap.scrollBy({ left: b.getAttribute('data-nav') === 'l' ? -step : step, behavior: 'smooth' });
+    });
+
+    wrap.addEventListener('scroll', navScrollSync, { passive: true });
+    window.addEventListener('resize', navScrollSync);
+    navScrollSync();
+
+    /* 처음 온 사람에게 한 번만 살짝 밀어 보여 준다.
+       한 번 봤으면 다시 하지 않는다 — 매번 흔들리면 성가시다. */
+    if (!lsGet(NAV_NUDGED) && wrap.scrollWidth > wrap.clientWidth + 8) {
+      nav.classList.add('nudge');
+      lsSet(NAV_NUDGED, '1');
+      setTimeout(() => nav.classList.remove('nudge'), 2600);
+    }
+  }
+
+  function navScrollSync() {
+    const nav = $('#nav'), wrap = $('#navScroll');
+    if (!nav || !wrap) return;
+    const max = wrap.scrollWidth - wrap.clientWidth;
+    const x = wrap.scrollLeft;
+    nav.classList.toggle('can-l', x > 8);
+    nav.classList.toggle('can-r', x < max - 8);
+    const bar = nav.querySelector('.nav-bar i');
+    if (bar && wrap.scrollWidth > 0) {
+      const w = Math.max(8, wrap.clientWidth / wrap.scrollWidth * 100);
+      bar.style.width = w + '%';
+      bar.style.left = (max > 0 ? (x / max) * (100 - w) : 0) + '%';
+    }
   }
 
   function markNav(id) {
@@ -5836,6 +6200,7 @@ body,
         a.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
       }
     });
+    setTimeout(navScrollSync, 420);   // 부드럽게 옮겨간 뒤의 위치로 맞춘다
   }
 
   /* ---------- 라우터 ---------- */
