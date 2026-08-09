@@ -959,7 +959,13 @@
         ' borderFillIDRef="' + CELL_BF + '" noAdjust="0">' +
         '<hp:sz width="' + tw + '" widthRelTo="ABSOLUTE" height="' + (rh * rows.length) +
         '" heightRelTo="ABSOLUTE" protect="0"/>' +
-        '<hp:pos treatAsChar="1" affectLSpacing="0" flowWithText="0" allowOverlap="0" holdAnchorAndSO="0"' +
+        /* treatAsChar="0" — 「글자처럼 취급」을 끈다.
+           켜 두면 표가 글자 하나로 다뤄져 쪽을 넘겨 이어지지 못하고,
+           한 장을 넘어가는 목록은 뒷부분이 통째로 잘려 나갔다.
+           끄면 표가 쪽 경계에서 나뉘어 전체가 나온다(한글 「표 속성 → 글자처럼 취급」과 같은 값).
+           flowWithText="1" 은 앞뒤 글이 밀릴 때 표도 함께 밀리게 한다 —
+           0 이면 표가 제자리에 박혀 본문과 겹친다. 한글이 직접 만든 파일도 이 조합을 쓴다. */
+        '<hp:pos treatAsChar="0" affectLSpacing="0" flowWithText="1" allowOverlap="0" holdAnchorAndSO="0"' +
         ' vertRelTo="PARA" horzRelTo="PARA" vertAlign="TOP" horzAlign="LEFT" vertOffset="0" horzOffset="0"/>' +
         '<hp:outMargin left="0" right="0" top="0" bottom="0"/>' +
         '<hp:inMargin left="141" right="141" top="141" bottom="141"/>';
