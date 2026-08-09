@@ -2054,8 +2054,8 @@ const PAGES = [
   summary:'디벗 업무를 하다 자주 찾게 되는 사이트와 전화를 걸어야 할 곳을 한곳에 모았습니다. 학교·지역별로 다른 주소는 직접 채워 넣어 쓰시면 됩니다.',
   blocks:[
     { t:'links', title:'디벗 담당자 연수 자료', items:[
-      { em:'📋', name:'디벗 The Basic 직무연수(업무) — 중등 통합 패들렛', url:'https://joo.is/basic', desc:'연수에서 나온 자료를 한곳에 모아둔 패들렛' },
-      { em:'📘', name:'디벗 The Basic 직무연수(업무) — 송쌤과학 자료', url:'https://joo.is/송쌤디벗업무', desc:'같은 연수의 송쌤과학 발표 자료' }
+      { em:'📋', name:'디벗 The Basic 직무연수(업무) — 중등 통합 패들렛', url:'https://padlet.com/pmopad/the-basic-qtxhyonmnzne63wy', desc:'연수에서 나온 자료를 한곳에 모아둔 패들렛' },
+      { em:'📘', name:'디벗 The Basic 직무연수(업무) — 송쌤과학 자료', url:'https://sprinkle-twig-1a9.notion.site/The-Basic-3887860f3542803e9253e88e74de02e7?pvs=74', desc:'같은 연수의 송쌤과학 발표 자료 (Notion)' }
     ]},
 
     { t:'notes', items:[
