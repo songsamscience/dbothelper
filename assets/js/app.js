@@ -12,14 +12,140 @@
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
 
-  /* ---------- 저장소 ---------- */
+  /* =========================================================
+     저장소 — 입력한 내용은 이 브라우저 안(localStorage)에만 남는다.
+     서버가 없으므로 사용자가 브라우저 데이터를 직접 지우지 않는 한
+     내용이 사라지지 않아야 한다. 그래서 두 가지를 한다.
+
+     ① 저장 공간을 「영구 보관」으로 요청한다 (navigator.storage.persist).
+        요청하지 않으면 브라우저는 이 사이트 데이터를 「지워도 되는 것」으로 보고
+        디스크가 부족할 때 말없이 비운다. 승인되면 그 대상에서 빠진다.
+     ② 저장에 실패하면 조용히 넘기지 않고 화면에 알린다.
+        예전에는 setItem 을 try/catch 로 감싸 그냥 삼켰기 때문에,
+        시크릿 창이나 저장 공간이 꽉 찬 상태에서는 다 적어 넣은 내용이
+        저장되지 않는데도 사용자는 끝까지 알 수 없었다.
+     ========================================================= */
+
+  // 이 브라우저에서 저장이 되기는 하는지 먼저 확인 (시크릿 창·쿠키 차단 감지)
+  const LS_LIVE = (function () {
+    try {
+      const k = '__debut_probe__';
+      localStorage.setItem(k, '1');
+      localStorage.removeItem(k);
+      return true;
+    } catch (e) { return false; }
+  })();
+
+  let stBarShown = '';
+  function stBar(kind) {
+    if (stBarShown === kind) return;
+    stBarShown = kind;
+    const old = document.getElementById('stBar');
+    if (old) old.remove();
+    const msg = kind === 'quota'
+      ? '<b class="st-t">저장 공간이 가득 차 더 저장하지 못했습니다</b>' +
+        '<span class="st-b">지금 입력한 내용이 <b>저장되지 않았습니다.</b> ' +
+        '<a href="#/setup">학교 정보</a>에서 <b>전체 백업 내려받기</b>로 백업한 뒤, ' +
+        '브라우저에서 다른 사이트의 저장 데이터를 정리해 주세요.</span>'
+      : '<b class="st-t">입력한 내용이 저장되지 않고 있습니다</b>' +
+        '<span class="st-b">브라우저가 이 사이트의 저장을 막고 있습니다 — ' +
+        '<b>시크릿(비공개) 창</b>이거나 쿠키·사이트 데이터가 차단된 상태입니다. ' +
+        '<b>창을 닫으면 지금까지 적은 내용이 모두 사라집니다.</b> ' +
+        '일반 창에서 다시 열어 주세요.</span>';
+    const bar = document.createElement('div');
+    bar.id = 'stBar';
+    bar.className = 'st-bar';
+    bar.setAttribute('role', 'alert');
+    bar.innerHTML = '<span class="st-em">⚠️</span><div class="st-wrap">' + msg + '</div>' +
+                    '<button type="button" class="st-x" aria-label="닫기">✕</button>';
+    bar.querySelector('.st-x').addEventListener('click', () => bar.remove());
+    document.body.appendChild(bar);
+  }
+
+  function lsGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+  function lsSet(key, val) {
+    try { localStorage.setItem(key, val); return true; }
+    catch (e) {
+      /* 이름은 브라우저마다 다르다 — 크롬 QuotaExceededError,
+         사파리 QUOTA_EXCEEDED_ERR, 파이어폭스 NS_ERROR_DOM_QUOTA_REACHED */
+      const n = (e && (e.name || '')) + ' ' + (e && (e.code || ''));
+      stBar(!LS_LIVE ? 'blocked' : /Quota|QUOTA|22|1014/.test(n) ? 'quota' : 'blocked');
+      return false;
+    }
+  }
+  function lsDel(key) { try { localStorage.removeItem(key); } catch (e) {} }
+
+  /* 저장 공간을 「영구 보관」으로 요청한다.
+     크롬 계열은 사이트를 어느 정도 써 봐야 승인하므로 처음 조작할 때 한 번 더 묻는다. */
+  let persistAsked = false;
+  function askPersist() {
+    if (persistAsked || !LS_LIVE) return;
+    const st = navigator.storage;
+    if (!st || !st.persist) return;
+    persistAsked = true;
+    Promise.resolve(st.persisted ? st.persisted() : false)
+      .then(ok => (ok ? true : st.persist()))
+      .then(ok => { if (!ok) persistAsked = false; })   // 거절되면 다음 조작 때 다시
+      .catch(() => { persistAsked = false; });
+  }
+  if (!LS_LIVE) {
+    // 저장이 아예 막힌 상태는 무언가 적기 전에 미리 알려야 의미가 있다
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => stBar('blocked'), { once: true });
+    } else { stBar('blocked'); }
+  } else {
+    askPersist();
+    ['pointerdown', 'keydown'].forEach(ev =>
+      window.addEventListener(ev, askPersist, { passive: true }));
+  }
+
+  /* ---------- 통째로 백업하고 되살리기 ----------
+     「영구 보관」요청은 브라우저가 거절할 수도 있고, 사용자가 인터넷 사용 기록을
+     지우면 어차피 함께 지워진다. 그래서 파일로 내보내는 길을 하나 열어 둔다.
+     예전에는 학교 정보(debut.profile) 하나만 담았지만, 실제로 사용자가 적어 넣은
+     내용은 생성기·체크리스트에도 흩어져 있으므로 debut. 로 시작하는 키를 모두 담는다. */
+  const BK_PREFIX = 'debut.';
+  function bkKeys() {
+    const out = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(BK_PREFIX) === 0) out.push(k);
+      }
+    } catch (e) {}
+    return out.sort();
+  }
+  function bkDump() {
+    const data = {};
+    bkKeys().forEach(k => { data[k] = lsGet(k); });
+    return { _debut: 1, saved: new Date().toISOString(), data: data };
+  }
+  /* 되살리기 — 새 형식({_debut, data})과 예전 학교 정보 전용 파일을 모두 받는다.
+     돌려주는 값은 되살린 키 개수(0이면 형식이 맞지 않는 파일). */
+  function bkRestore(obj) {
+    if (!obj || typeof obj !== 'object') return 0;
+    if (obj._debut && obj.data && typeof obj.data === 'object') {
+      let n = 0;
+      Object.keys(obj.data).forEach(k => {
+        if (k.indexOf(BK_PREFIX) !== 0) return;          // 남의 키는 건드리지 않는다
+        const v = obj.data[k];
+        if (typeof v === 'string' && lsSet(k, v)) n++;
+      });
+      return n;
+    }
+    // 예전 형식: 학교 정보 값이 그대로 들어 있는 객체
+    pfSet(obj);
+    return 1;
+  }
+
+  /* ---------- 체크리스트 저장 ---------- */
   function loadChecks() {
-    try { return JSON.parse(localStorage.getItem(LS_CHECK) || '{}'); }
+    try { return JSON.parse(lsGet(LS_CHECK) || '{}'); }
     catch (e) { return {}; }
   }
-  function saveChecks(obj) {
-    try { localStorage.setItem(LS_CHECK, JSON.stringify(obj)); } catch (e) {}
-  }
+  function saveChecks(obj) { lsSet(LS_CHECK, JSON.stringify(obj)); }
   let CHECKS = loadChecks();
 
   /* ---------- 체크리스트 통계 ---------- */
@@ -88,14 +214,14 @@
   function pfGet() {
     let p = Object.assign({}, PF_DEFAULT);
     try {
-      const saved = JSON.parse(localStorage.getItem(PF_KEY) || 'null');
+      const saved = JSON.parse(lsGet(PF_KEY) || 'null');
       if (saved) p = Object.assign(p, saved);
     } catch (e) {}
     return p;
   }
   function pfSet(patch) {
     const p = Object.assign(pfGet(), patch);
-    try { localStorage.setItem(PF_KEY, JSON.stringify(p)); } catch (e) {}
+    lsSet(PF_KEY, JSON.stringify(p));
     return p;
   }
   // 값이 있을 때만 반환 (비어 있으면 자료에서 자동으로 빠짐)
@@ -1735,8 +1861,8 @@
       });
 
       h += '<div class="rg-actions">' +
-           '<button type="button" class="rg-btn ghost" id="pfDl">⬇️ 설정 내려받기</button>' +
-           '<button type="button" class="rg-btn ghost" id="pfUpBtn">⬆️ 설정 불러오기</button>' +
+           '<button type="button" class="rg-btn ghost" id="pfDl">⬇️ 전체 백업 내려받기</button>' +
+           '<button type="button" class="rg-btn ghost" id="pfUpBtn">⬆️ 백업 불러오기</button>' +
            '<input type="file" id="pfUp" accept="application/json,.json" hidden>' +
            '<button type="button" class="rg-btn ghost" id="pfClear">모두 지우기</button>' +
            '</div>';
@@ -2404,7 +2530,7 @@
     let st = { tool: 'pdf', orient: 'portrait', mood: 'navy', char: 'off' };
     RG_FIELDS.forEach(k => { st[k] = k === 'rules' ? (d.rules || []).join('\n') : (d[k] || ''); });
     try {
-      const saved = JSON.parse(localStorage.getItem(RG_KEY) || 'null');
+      const saved = JSON.parse(lsGet(RG_KEY) || 'null');
       if (saved) st = Object.assign(st, saved);
     } catch (e) {}
     const pf = pfGet();                       // 학교 이름·부서명은 전역 설정을 따름
@@ -2412,7 +2538,7 @@
     st.dept = pf.dept || st.dept;
     return st;
   }
-  function rgSave(st) { try { localStorage.setItem(RG_KEY, JSON.stringify(st)); } catch (e) {} }
+  function rgSave(st) { lsSet(RG_KEY, JSON.stringify(st)); }
   function rgRules(st) {
     return String(st.rules || '').split('\n').map(s => s.trim()).filter(Boolean);
   }
@@ -2734,7 +2860,7 @@ numbered,
     let st = { copies: '1', datemode: 'blank' };
     RT_FIELDS.forEach(k => { st[k] = k === 'parts' ? (d.parts || []).join('\n') : (d[k] || ''); });
     try {
-      const saved = JSON.parse(localStorage.getItem(RT_KEY) || 'null');
+      const saved = JSON.parse(lsGet(RT_KEY) || 'null');
       if (saved) st = Object.assign(st, saved);
     } catch (e) {}
     const pf = pfGet();                       // 학교 이름·부서명은 전역 설정을 따름
@@ -2762,7 +2888,7 @@ numbered,
     });
     return out;
   }
-  function rtSave(st) { try { localStorage.setItem(RT_KEY, JSON.stringify(st)); } catch (e) {} }
+  function rtSave(st) { lsSet(RT_KEY, JSON.stringify(st)); }
   function rtParts(st) {
     return String(st.parts || '').split('\n').map(s => s.trim()).filter(Boolean);
   }
@@ -3331,7 +3457,7 @@ th em{display:block;font-style:normal;font-size:3.3mm;color:#333;margin-top:.8mm
   function wfLoad() {
     let st = wfDefaults();
     try {
-      const saved = JSON.parse(localStorage.getItem(WF_KEY) || 'null');
+      const saved = JSON.parse(lsGet(WF_KEY) || 'null');
       if (saved) st = Object.assign(st, saved);
     } catch (e) {}
     /* 학교 이름·부서명·와이파이 구성은 「학교 정보」를 따름 */
@@ -3345,7 +3471,7 @@ th em{display:block;font-style:normal;font-size:3.3mm;color:#333;margin-top:.8mm
     if (pf.wifi) st.rooms = pf.wifi;
     return st;
   }
-  function wfSave(st) { try { localStorage.setItem(WF_KEY, JSON.stringify(st)); } catch (e) {} }
+  function wfSave(st) { lsSet(WF_KEY, JSON.stringify(st)); }
 
   const wfLines = s => String(s || '').split('\n').map(x => x.trim()).filter(Boolean);
 
@@ -3681,7 +3807,7 @@ td.mono{font-family:'IBM Plex Mono','Consolas',monospace;font-weight:600;letter-
   function csLoad() {
     let st = csDefaults();
     try {
-      const saved = JSON.parse(localStorage.getItem(CS_KEY) || 'null');
+      const saved = JSON.parse(lsGet(CS_KEY) || 'null');
       if (saved) st = Object.assign(st, saved);
     } catch (e) {}
     const pf = pfGet();
@@ -3691,7 +3817,7 @@ td.mono{font-family:'IBM Plex Mono','Consolas',monospace;font-weight:600;letter-
     if (!st.date) { const t = todayKR(); st.date = t.y + '. ' + t.m + '. ' + t.d + '.'; }
     return st;
   }
-  function csSave(st) { try { localStorage.setItem(CS_KEY, JSON.stringify(st)); } catch (e) {} }
+  function csSave(st) { lsSet(CS_KEY, JSON.stringify(st)); }
 
   function csItems(st) {
     return String(st.items || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
@@ -3952,7 +4078,7 @@ th{width:36mm;background:#EDF3F9;font-weight:700;line-height:1.45}
   function cbLoad() {
     let st = cbDefaults();
     try {
-      const saved = JSON.parse(localStorage.getItem(CB_KEY) || 'null');
+      const saved = JSON.parse(lsGet(CB_KEY) || 'null');
       if (saved) st = Object.assign(st, saved);
     } catch (e) {}
     const pf = pfGet();
@@ -3961,7 +4087,7 @@ th{width:36mm;background:#EDF3F9;font-weight:700;line-height:1.45}
     st.contact = pfSyncContact(st, pf);
     return st;
   }
-  function cbSave(st) { try { localStorage.setItem(CB_KEY, JSON.stringify(st)); } catch (e) {} }
+  function cbSave(st) { lsSet(CB_KEY, JSON.stringify(st)); }
 
   const cbLines = s => String(s || '').split('\n').map(x => x.trim()).filter(Boolean);
   function cbRules(st) {
@@ -4868,7 +4994,7 @@ body,
     /* 예전에는 종류 하나만 저장했다 — 그 값도 그대로 읽어 준다 */
     let kind = 'book', mode = 'doc';
     try {
-      const raw = localStorage.getItem(EDU_KEY) || '';
+      const raw = lsGet(EDU_KEY) || '';
       if (raw.charAt(0) === '{') {
         const o = JSON.parse(raw);
         kind = o.kind || 'book';
@@ -4876,7 +5002,7 @@ body,
       } else if (raw) { kind = raw; }
     } catch (e) {}
     const save = () => {
-      try { localStorage.setItem(EDU_KEY, JSON.stringify({ kind: kind, mode: mode })); } catch (e) {}
+      lsSet(EDU_KEY, JSON.stringify({ kind: kind, mode: mode }));
     };
 
     wrap.addEventListener('click', e => {
@@ -4980,13 +5106,18 @@ body,
         return;
       }
       if (e.target.closest('#pfDl')) {
-        downloadDoc('디벗_학교정보_설정.json', JSON.stringify(pfGet(), null, 2));
+        const d = new Date();
+        const stamp = d.getFullYear() + '-' +
+                      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                      String(d.getDate()).padStart(2, '0');
+        downloadDoc('디벗_업무도우미_백업_' + stamp + '.json',
+                    JSON.stringify(bkDump(), null, 2));
         return;
       }
       if (e.target.closest('#pfUpBtn')) { $('#pfUp', wrap).click(); return; }
       if (e.target.closest('#pfClear')) {
         if (!window.confirm('입력한 학교 정보를 모두 지울까요? 되돌릴 수 없습니다.')) return;
-        try { localStorage.removeItem(PF_KEY); } catch (e2) {}
+        lsDel(PF_KEY);
         route();
         return;
       }
@@ -5020,10 +5151,15 @@ body,
         const r = new FileReader();
         r.onload = () => {
           try {
-            const obj = JSON.parse(r.result);
-            if (obj && typeof obj === 'object') { pfSet(obj); route(); }
-            else window.alert('설정 파일 형식이 올바르지 않습니다.');
-          } catch (e2) { window.alert('설정 파일을 읽지 못했습니다.'); }
+            const n = bkRestore(JSON.parse(r.result));
+            if (n) {
+              CHECKS = loadChecks();      // 체크리스트도 백업에 들어 있다
+              route();
+              window.alert('백업을 되살렸습니다. (' + n + '개 항목)');
+            } else {
+              window.alert('백업 파일 형식이 올바르지 않습니다.');
+            }
+          } catch (e2) { window.alert('백업 파일을 읽지 못했습니다.'); }
         };
         r.readAsText(file);
       });
@@ -5065,12 +5201,12 @@ body,
         ? (d[k] || []).join('\n') : (d[k] || '');
     });
     try {
-      const saved = JSON.parse(localStorage.getItem(SW_KEY) || 'null');
+      const saved = JSON.parse(lsGet(SW_KEY) || 'null');
       if (saved) st = Object.assign(st, saved);
     } catch (e) {}
     return st;
   }
-  function swSave(st) { try { localStorage.setItem(SW_KEY, JSON.stringify(st)); } catch (e) {} }
+  function swSave(st) { lsSet(SW_KEY, JSON.stringify(st)); }
   const SW = {};
 
   /* ---------------------------------------------------------
@@ -5796,7 +5932,7 @@ body,
     clearTimeout(themeTimer);
     themeTimer = setTimeout(() => root.classList.remove('theming'), 320);
     root.setAttribute('data-theme', nx);
-    try { localStorage.setItem(LS_THEME, nx); } catch (e) {}
+    lsSet(LS_THEME, nx);
   });
 
   $('#navBtn').addEventListener('click', () => {
@@ -5810,7 +5946,7 @@ body,
   /* ---------- 시작 ---------- */
   (function init() {
     let th = null;
-    try { th = localStorage.getItem(LS_THEME); } catch (e) {}
+    th = lsGet(LS_THEME);
     if (!th) th = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', th);
 
