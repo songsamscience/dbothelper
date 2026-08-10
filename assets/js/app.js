@@ -1154,13 +1154,20 @@
       '<ocf:rootfile full-path="META-INF/container.rdf" media-type="application/rdf+xml"/>' +
       '</ocf:rootfiles></ocf:container>';
 
+    /* ⚠️ xmlns:ns0 은 반드시 <ns0:hasPart> 마다 따로 적는다 — 맨 위 <rdf:RDF>에 한 번만
+       적으면 안 된다. XML 규칙으로는 둘이 같은 뜻이지만, 한글의 RDF 읽기 부분은
+       이름공간을 물려받지 않고 그 태그에 적힌 것만 본다. 위에만 적어 두면 한글이
+       ns0 을 찾지 못해 파일을 여는 순간 그대로 튕긴다(액세스 위반 0xC0000005).
+       한글이 직접 만든 .hwpx 도 아래와 같이 태그마다 적어 둔다. 줄이지 말 것. */
+    const NS0 = ' xmlns:ns0="http://www.hancom.co.kr/hwpml/2016/meta/pkg#"';
     const containerRdf = XDECL +
-      '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"' +
-      ' xmlns:ns0="http://www.hancom.co.kr/hwpml/2016/meta/pkg#">' +
-      '<rdf:Description rdf:about=""><ns0:hasPart rdf:resource="Contents/header.xml"/></rdf:Description>' +
+      '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +
+      '<rdf:Description rdf:about=""><ns0:hasPart' + NS0 +
+      ' rdf:resource="Contents/header.xml"/></rdf:Description>' +
       '<rdf:Description rdf:about="Contents/header.xml">' +
       '<rdf:type rdf:resource="http://www.hancom.co.kr/hwpml/2016/meta/pkg#HeaderFile"/></rdf:Description>' +
-      '<rdf:Description rdf:about=""><ns0:hasPart rdf:resource="Contents/section0.xml"/></rdf:Description>' +
+      '<rdf:Description rdf:about=""><ns0:hasPart' + NS0 +
+      ' rdf:resource="Contents/section0.xml"/></rdf:Description>' +
       '<rdf:Description rdf:about="Contents/section0.xml">' +
       '<rdf:type rdf:resource="http://www.hancom.co.kr/hwpml/2016/meta/pkg#SectionFile"/></rdf:Description>' +
       '<rdf:Description rdf:about="">' +
