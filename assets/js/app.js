@@ -162,7 +162,8 @@
     let n = 0;
     (page.blocks || []).forEach((b, bi) => {
       if (b.t !== 'checklist') return;
-      (b.items || []).forEach((_, ii) => { if (CHECKS[page.id + ':' + bi + ':' + ii]) n++; });
+      const ck = b.ck != null ? b.ck : bi;
+      (b.items || []).forEach((_, ii) => { if (CHECKS[page.id + ':' + ck + ':' + ii]) n++; });
     });
     return n;
   }
@@ -1625,13 +1626,14 @@
 
     checklist(b, page, bi) {
       const items = b.items || [];
-      const done = items.reduce((a, _, ii) => a + (CHECKS[page.id + ':' + bi + ':' + ii] ? 1 : 0), 0);
+      const ck = b.ck != null ? b.ck : bi;     // 저장 키 — 블록 순서가 바뀌어도 체크가 따라가도록
+      const done = items.reduce((a, _, ii) => a + (CHECKS[page.id + ':' + ck + ':' + ii] ? 1 : 0), 0);
       let h = '<section class="block" data-block="' + bi + '">';
       h += '<h2>' + (b.title || '체크리스트') +
            '<span class="cnt" data-cnt="' + bi + '">' + done + ' / ' + items.length + '</span></h2>';
       h += '<div class="ck">';
       items.forEach((it, ii) => {
-        const key = page.id + ':' + bi + ':' + ii;
+        const key = page.id + ':' + ck + ':' + ii;
         const on = CHECKS[key] ? ' on' : '';
         h += '<div class="ck-item' + on + '" role="checkbox" tabindex="0" aria-checked="' + (!!CHECKS[key]) +
              '" data-key="' + key + '">' +
