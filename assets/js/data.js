@@ -89,13 +89,13 @@ const PAGES = [
           { v:'many', t:'교실 · 구역마다 다름' }
         ]},
         { k:'wifiSsid', label:'네트워크 이름 (SSID)', when:'wifi-one', ph:'예: SenWiFi_Free_5G' },
-        { k:'wifiPw', label:'비밀번호', when:'wifi-one', ph:'예: sen2021!wi' },
+        { k:'wifiPw', label:'비밀번호', when:'wifi-one', ph:'예: abcd1234' },
         { k:'wifi', type:'xlsx', when:'wifi-many',
           title:'📊 엑셀로 한 번에 넣기',
           sub:'구역이 많으면 엑셀에 정리해서 올리는 편이 빠릅니다',
           hint:'첫 줄은 머리글로 보고 건너뜁니다. <b>A열 구역 · B열 네트워크 이름 · C열 비밀번호</b> 순서로 적으세요. 여기서 올린 목록은 <a href="#/wifi"><b>와이파이 안내</b></a> 생성기와 함께 쓰입니다.' },
         { k:'wifi', label:'구역별 와이파이 목록', type:'textarea', rows:5, when:'wifi-many',
-          ph:'1학년 교실 | SenWiFi_Free_5G | sen2021!wi\n2학년 교실 | SenWiFi_Free_5G | sen2021!wi\n특별실·도서관 | SenWiFi_Free_5G | sen2021!wi' }
+          ph:'1학년 교실 | SenWiFi_Free_5G | abcd1234\n2학년 교실 | SenWiFi_Free_5G | abcd1234\n특별실·도서관 | SenWiFi_Free_5G | abcd1234' }
       ]},
 
       { name:'⑦ 사용 규칙 · 벌점 내규', em:'⚖️', hint:'한 줄에 하나씩 적으세요. 사용 교육 자료와 안내문에 표로 들어갑니다.', fields:[
@@ -1089,12 +1089,12 @@ const PAGES = [
         dtitle:'학교 와이파이 접속 안내',
         dsub:'디벗으로 인터넷에 연결하는 방법입니다',
         ssid:'SenWiFi_Free_5G',
-        pw:'sen2021!wi',
+        pw:'abcd1234',
         rooms:[
-          '1학년 교실 | SenWiFi_Free_5G | sen2021!wi',
-          '2학년 교실 | SenWiFi_Free_5G | sen2021!wi',
-          '3학년 교실 | SenWiFi_Free_5G | sen2021!wi',
-          '특별실 · 도서관 | SenWiFi_Free_5G | sen2021!wi'
+          '1학년 교실 | SenWiFi_Free_5G | abcd1234',
+          '2학년 교실 | SenWiFi_Free_5G | abcd1234',
+          '3학년 교실 | SenWiFi_Free_5G | abcd1234',
+          '특별실 · 도서관 | SenWiFi_Free_5G | abcd1234'
         ],
         steps:[
           '디벗을 켜고 화면 아래(또는 위)의 와이파이 아이콘을 누릅니다.',

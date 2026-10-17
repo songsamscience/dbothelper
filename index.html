@@ -11,7 +11,13 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- 글꼴은 화면을 막지 않게 따로 받는다 (학교망에서 구글 글꼴이 느려도 흰 화면이 오래 가지 않게) -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap"></noscript>
+
+<!-- 어두운 화면을 쓰는 사람은 처음부터 어둡게 (흰 화면 번쩍임 방지) -->
+<script>(function(){try{var t=localStorage.getItem('debut.theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
@@ -76,7 +82,7 @@
         <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>
       </button>
 
-      <button class="ico only-mobile" id="navBtn" type="button" aria-label="메뉴 열기" aria-expanded="false">
+      <button class="ico only-mobile" id="navBtn" type="button" aria-label="메뉴 열기" aria-controls="nav" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
     </div>
@@ -87,7 +93,7 @@
   </nav>
 </header>
 
-<main id="main">
+<main id="main" tabindex="-1">
   <div id="view" class="view"><!-- app.js가 채움 --></div>
 </main>
 
@@ -95,7 +101,7 @@
   <div class="ft-in">
     <p><b>송쌤과학 디벗 업무 도우미</b> — 학교 현장에서 바로 쓰는 디벗 업무 절차 안내</p>
     <p class="ft-src"><b>첨부자료 출처</b> — 아주중 송T · 명지중 임T · 서울특별시교육청 창의미래교육과</p>
-    <p class="ft-sub">첨부 파일은 <code>assets/files/</code>, 이미지는 <code>assets/img/</code> 폴더에 넣으면 자동으로 연결됩니다.</p>
+    <p class="ft-sub" hidden>첨부 파일은 <code>assets/files/</code>, 이미지는 <code>assets/img/</code> 폴더에 넣으면 자동으로 연결됩니다.</p>
   </div>
 </footer>
 

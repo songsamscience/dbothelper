@@ -12,6 +12,10 @@
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
 
+  /* 내 컴퓨터에서 열었을 때만(관리하는 사람) 보이는 안내가 있다 — 공개 사이트의 선생님들께는 숨김 */
+  const IS_LOCAL = location.protocol === 'file:' ||
+                   /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+
   /* =========================================================
      저장소 — 입력한 내용은 이 브라우저 안(localStorage)에만 남는다.
      서버가 없으므로 사용자가 브라우저 데이터를 직접 지우지 않는 한
@@ -1765,7 +1769,8 @@
         if (imgs.length) {
           h += '<div class="mon-imgs' + (imgs.length > 1 ? ' multi' : '') + '">';
           imgs.forEach(src => {
-            h += '<img src="' + src + '" alt="' + it.label + ' 디벗 업무 배너" loading="lazy" data-img="' + src + '">';
+            /* 배너는 모두 1600×900 — 크기를 미리 알려 두면 불러오는 동안 화면이 출렁이지 않는다 */
+            h += '<img src="' + src + '" alt="' + it.label + ' 디벗 업무 배너" width="1600" height="900" loading="lazy" data-img="' + src + '">';
           });
           h += '</div>';
         }
@@ -2295,6 +2300,16 @@
          '<span>🖨️ 페이지별 인쇄 지원</span>' +
          '</div></section>';
 
+    h += '<div class="home-search" role="search">' +
+         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">' +
+         '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+         '<input type="search" id="homeQ" autocomplete="off" enterkeyhint="search" ' +
+         'aria-label="업무와 서식 찾기" aria-describedby="homeQHint" ' +
+         'placeholder="업무 · 서식 찾기 (예: 라벨지, 동의서)">' +
+         '</div>' +
+         '<p class="home-search-hint" id="homeQHint" aria-live="polite"></p>' +
+         '<div id="homeFiles"></div>';
+
     const first = ['setup', 'monthly'].map(id => PAGES.find(p => p.id === id)).filter(Boolean);
     if (first.length) {
       h += '<div class="sec-head"><h2>먼저 볼 것</h2>' +
@@ -2305,7 +2320,7 @@
     h += '<div class="sec-head"><h2>업무별 안내</h2><span>1번부터 ' + jobs.length + '번까지 순서대로 진행하면 됩니다</span></div>';
     h += '<div class="card-grid">' + jobs.map(cardHTML).join('') + '</div>';
 
-    h += '<div class="sec-head"><h2>자료 넣는 방법</h2><span>GitHub에 그대로 올려도 동작합니다</span></div>' +
+    if (IS_LOCAL) h += '<div class="sec-head"><h2>자료 넣는 방법</h2><span>GitHub에 그대로 올려도 동작합니다</span></div>' +
          '<section class="block"><div class="rich">' +
          '<p>이 사이트는 <b>base64를 쓰지 않습니다.</b> 파일과 이미지를 폴더에 넣고 경로만 연결하는 방식이라 HTML 용량이 커지지 않습니다.</p>' +
          '<ul>' +
@@ -2342,6 +2357,80 @@
            '<p>' + p.summary + '</p>' +
            '<div class="card-foot">' + foot + '</div>' +
            '</a>';
+  }
+
+  /* ---------- 홈 검색 ----------
+     페이지마다 제목·요약·본문 글자와 첨부 서식 이름을 모아 두고,
+     입력한 낱말이 모두 들어 있는 업무 카드만 남긴다. 서식은 바로 받을 수 있게 따로 보여 준다. */
+  let SEARCH_IDX = null;
+  const SKIP_KEYS = { id: 1, tag: 1, em: 1, src: 1, path: 1, imgs: 1, accent: 1, kind: 1 };
+
+  function plainText(v, out) {
+    if (typeof v === 'string') out.push(v);
+    else if (Array.isArray(v)) v.forEach(x => plainText(x, out));
+    else if (v && typeof v === 'object') {
+      Object.keys(v).forEach(k => { if (!SKIP_KEYS[k]) plainText(v[k], out); });
+    }
+    return out;
+  }
+  const norm = s => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').toLowerCase();
+
+  function searchIndex() {
+    if (SEARCH_IDX) return SEARCH_IDX;
+    const pages = {}, files = [], seen = new Set();
+    PAGES.forEach(p => {
+      pages[p.id] = norm(plainText(p, []).join(' '));
+      (p.blocks || []).forEach(b => {
+        if (b.t !== 'files') return;
+        (b.items || []).forEach(f => {
+          if (seen.has(f.path)) return;
+          seen.add(f.path);
+          files.push({ f: f, txt: norm([f.name || '', f.desc || '', fileName(f.path)].join(' ')) });
+        });
+      });
+    });
+    return (SEARCH_IDX = { pages: pages, files: files });
+  }
+
+  function homeSearchInit() {
+    const inp = $('#homeQ');
+    if (!inp) return;
+    const hint = $('#homeQHint'), out = $('#homeFiles');
+
+    function run() {
+      const terms = norm(inp.value).trim().split(' ').filter(Boolean);
+      const idx = searchIndex();
+      const hit = txt => terms.every(t => txt.indexOf(t) > -1);
+      let shown = 0;
+
+      $$('#view .card-grid .card').forEach(c => {
+        const id = (c.getAttribute('href') || '').replace(/^#\//, '');
+        const ok = !terms.length || hit(idx.pages[id] || '');
+        c.hidden = !ok;
+        if (ok) shown++;
+      });
+      // 카드가 하나도 안 남은 묶음은 제목째 숨긴다
+      $$('#view .card-grid').forEach(g => {
+        const any = $$('.card', g).some(c => !c.hidden);
+        g.hidden = !any;
+        const head = g.previousElementSibling;
+        if (head && head.classList.contains('sec-head')) head.hidden = !any;
+      });
+
+      if (!terms.length) { hint.textContent = ''; out.innerHTML = ''; return; }
+
+      const fl = idx.files.filter(x => hit(x.txt)).map(x => x.f);
+      out.innerHTML = fl.length ? R.files({ title: '바로 받을 수 있는 서식 ' + fl.length + '개', items: fl.slice(0, 12) }) : '';
+      hint.textContent = (shown || fl.length)
+        ? '업무 ' + shown + '개' + (fl.length ? ' · 서식 ' + fl.length + '개' : '') + '를 찾았습니다.' +
+          (fl.length > 12 ? ' (서식은 앞의 12개만 보여 줍니다)' : '')
+        : '찾는 내용이 없습니다. 더 짧은 낱말로 찾아보세요. (예: “동의서” 대신 “동의”)';
+    }
+
+    inp.addEventListener('input', run);
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && inp.value) { e.stopPropagation(); inp.value = ''; run(); }
+    });
   }
 
   /* ---------- 상세 ---------- */
@@ -2396,6 +2485,7 @@
     eduInit();
     swInit();
     ezInit();
+    homeSearchInit();
 
     // 줄바꿈 다듬기 · 화면에 들어오는 순서대로 떠오르게
     tidyBreaks($('#view'));
@@ -6241,16 +6331,32 @@ body,
     $$('.nav-item').forEach(a => {
       const on = a.getAttribute('data-id') === id;
       a.classList.toggle('on', on);
+      if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
       if (on && window.innerWidth > 620) {
-        a.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+        /* 메뉴 줄만 가로로 옮긴다 — scrollIntoView는 고정 헤더 때문에 페이지 전체까지 굴려 버린다 */
+        const sc = $('#navScroll');
+        const r = a.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+        sc.scrollBy({ left: (r.left + r.width / 2) - (sr.left + sr.width / 2), behavior: 'smooth' });
       }
     });
     setTimeout(navScrollSync, 420);   // 부드럽게 옮겨간 뒤의 위치로 맞춘다
   }
 
   /* ---------- 라우터 ---------- */
+  function closeNav() {
+    $('#nav').classList.remove('open');
+    $('#navBtn').setAttribute('aria-expanded', 'false');
+  }
+
   function route() {
-    const id = (location.hash || '#/home').replace(/^#\/?/, '') || 'home';
+    const raw = location.hash || '';
+    /* '#main' 같은 페이지 안 앵커(본문 바로가기) — 화면은 그대로 두고 초점만 옮긴다 */
+    if (raw && !/^#\//.test(raw) && $('#view').children.length) {
+      const t = document.getElementById(raw.slice(1));
+      if (t) { t.setAttribute('tabindex', '-1'); t.focus(); }
+      return;
+    }
+    const id = (raw || '#/home').replace(/^#\/?/, '') || 'home';
     const view = $('#view');
     const page = PAGES.find(p => p.id === id);
 
@@ -6274,9 +6380,13 @@ body,
     setTimeout(() => view.classList.remove('enter'), 700);
 
     afterRender();
-    $('#nav').classList.remove('open');
-    $('#navBtn').setAttribute('aria-expanded', 'false');
-    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+    closeNav();
+    /* CSS의 scroll-behavior:smooth 때문에 새 페이지가 주르륵 올라가지 않도록 잠깐 끈다 */
+    const de = document.documentElement;
+    de.style.scrollBehavior = 'auto';
+    void de.offsetHeight;             // 바뀐 스타일을 먼저 반영해야 즉시 이동한다
+    window.scrollTo(0, 0);
+    de.style.scrollBehavior = '';
   }
 
   /* ---------- 이벤트 ---------- */
@@ -6351,6 +6461,26 @@ body,
     $('#navBtn').setAttribute('aria-expanded', String(open));
   });
 
+  /* 본문 바로가기 — 주소(#/페이지)는 그대로 두고 초점만 본문으로 */
+  $('.skip').addEventListener('click', e => {
+    e.preventDefault();
+    const m = $('#main');
+    m.focus();
+    m.scrollIntoView();
+  });
+
+  /* 지금 보고 있는 메뉴를 다시 눌러도(hashchange 없음) 모바일 메뉴가 닫히게 */
+  $('#navScroll').addEventListener('click', e => {
+    if (e.target.closest('.nav-item')) closeNav();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && $('#nav').classList.contains('open')) {
+      closeNav();
+      $('#navBtn').focus();
+    }
+  });
+
   window.addEventListener('hashchange', route);
 
   /* ---------- 시작 ---------- */
@@ -6360,6 +6490,7 @@ body,
     if (!th) th = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', th);
 
+    if (IS_LOCAL) { const fs = $('.ft-sub'); if (fs) fs.hidden = false; }
     renderSocial();
     buildNav();
     route();
