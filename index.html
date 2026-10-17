@@ -17,7 +17,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap"></noscript>
 
 <!-- 어두운 화면을 쓰는 사람은 처음부터 어둡게 (흰 화면 번쩍임 방지) -->
-<script>(function(){try{var t=localStorage.getItem('debut.theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script>(function(){try{var t=localStorage.getItem('debut.theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);if(localStorage.getItem('debut.navCollapsed')==='1')document.documentElement.classList.add('nav-collapsed');}catch(e){}})();</script>
 
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
@@ -27,6 +27,9 @@
 
 <header id="hd">
   <div class="hd-top">
+    <button class="ico" id="navBtn" type="button" aria-label="메뉴 열고 닫기" title="메뉴 열고 닫기" aria-controls="nav" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
     <a class="brand" href="#/home" aria-label="홈으로">
       <span class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 72 64">
@@ -82,17 +85,18 @@
         <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>
       </button>
 
-      <button class="ico only-mobile" id="navBtn" type="button" aria-label="메뉴 열기" aria-controls="nav" aria-expanded="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-      </button>
     </div>
   </div>
+</header>
 
+<div class="shell">
+  <!-- 왼쪽 사이드바 메뉴 — 좁은 화면에서는 ☰ 단추로 여닫는 서랍이 된다 -->
   <nav id="nav" aria-label="주요 메뉴">
     <div class="nav-scroll" id="navScroll"><!-- app.js가 채움 --></div>
   </nav>
-</header>
+  <div class="nav-dim" id="navDim" hidden></div>
 
+  <div class="shell-main">
 <main id="main" tabindex="-1">
   <div id="view" class="view"><!-- app.js가 채움 --></div>
 </main>
@@ -104,6 +108,8 @@
     <p class="ft-sub" hidden>첨부 파일은 <code>assets/files/</code>, 이미지는 <code>assets/img/</code> 폴더에 넣으면 자동으로 연결됩니다.</p>
   </div>
 </footer>
+  </div>
+</div>
 
 <script src="assets/js/data.js"></script>
 <script src="assets/js/app.js"></script>

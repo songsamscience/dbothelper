@@ -6263,68 +6263,27 @@ body,
     ezRender();
   }
 
-  /* ---------- 내비 ---------- */
-  const NAV_NUDGED = 'debut.navhint';
+  /* ---------- 내비 (왼쪽 사이드바) ----------
+     넓은 화면: 늘 펼쳐 두고 ☰ 단추로 접기·펼치기(브라우저에 기억)
+     좁은 화면: ☰ 단추로 여닫는 서랍 */
+  const LS_NAV = 'debut.navCollapsed';
+  const WIDE = window.matchMedia('(min-width:1024px)');
 
   function buildNav() {
-    const wrap = $('#navScroll');
-    let h = '<a class="nav-item" href="#/home" data-id="home"><span class="em">🏠</span>홈</a>';
-    PAGES.forEach(p => {
-      h += '<a class="nav-item" href="#/' + p.id + '" data-id="' + p.id + '">' +
-           '<span class="em">' + p.em + '</span>' + p.short + '</a>';
-    });
-    wrap.innerHTML = h;
-    navScrollUI(wrap);
-  }
+    const item = (id, em, label, no) =>
+      '<a class="nav-item" href="#/' + id + '" data-id="' + id + '">' +
+      '<span class="em" aria-hidden="true">' + em + '</span><span class="lb">' + label + '</span>' +
+      (no ? '<span class="no">' + no + '</span>' : '') + '</a>';
+    const jobs = PAGES.filter(p => typeof p.no === 'number');
+    const rest = PAGES.filter(p => typeof p.no !== 'number');
 
-  /* 메뉴가 화면보다 길다는 것을 눈으로 알 수 있게 —
-     끝 흐림 · 화살표 단추 · 남은 양 막대를 붙이고 스크롤에 맞춰 갱신한다. */
-  function navScrollUI(wrap) {
-    const nav = $('#nav');
-    if (!nav || nav.querySelector('.nav-bar')) { navScrollSync(); return; }
-
-    const arrow = (side, d) =>
-      '<button type="button" class="nav-ar ' + side + '" data-nav="' + side + '" ' +
-      'tabindex="-1" aria-hidden="true">' +
-      '<svg viewBox="0 0 24 24"><path d="' + d + '"/></svg></button>';
-
-    nav.insertAdjacentHTML('beforeend',
-      arrow('l', 'M15 5l-7 7 7 7') + arrow('r', 'M9 5l7 7-7 7') +
-      '<div class="nav-bar"><i></i></div>');
-
-    nav.addEventListener('click', e => {
-      const b = e.target.closest('[data-nav]');
-      if (!b) return;
-      const step = Math.max(120, Math.round(wrap.clientWidth * 0.8));
-      wrap.scrollBy({ left: b.getAttribute('data-nav') === 'l' ? -step : step, behavior: 'smooth' });
-    });
-
-    wrap.addEventListener('scroll', navScrollSync, { passive: true });
-    window.addEventListener('resize', navScrollSync);
-    navScrollSync();
-
-    /* 처음 온 사람에게 한 번만 살짝 밀어 보여 준다.
-       한 번 봤으면 다시 하지 않는다 — 매번 흔들리면 성가시다. */
-    if (!lsGet(NAV_NUDGED) && wrap.scrollWidth > wrap.clientWidth + 8) {
-      nav.classList.add('nudge');
-      lsSet(NAV_NUDGED, '1');
-      setTimeout(() => nav.classList.remove('nudge'), 2600);
+    let h = '<p class="nav-sec">시작하기</p>' + item('home', '🏠', '홈');
+    rest.forEach(p => { h += item(p.id, p.em, p.short); });
+    if (jobs.length) {
+      h += '<p class="nav-sec">업무 순서</p>';
+      jobs.forEach(p => { h += item(p.id, p.em, p.short, String(p.no).padStart(2, '0')); });
     }
-  }
-
-  function navScrollSync() {
-    const nav = $('#nav'), wrap = $('#navScroll');
-    if (!nav || !wrap) return;
-    const max = wrap.scrollWidth - wrap.clientWidth;
-    const x = wrap.scrollLeft;
-    nav.classList.toggle('can-l', x > 8);
-    nav.classList.toggle('can-r', x < max - 8);
-    const bar = nav.querySelector('.nav-bar i');
-    if (bar && wrap.scrollWidth > 0) {
-      const w = Math.max(8, wrap.clientWidth / wrap.scrollWidth * 100);
-      bar.style.width = w + '%';
-      bar.style.left = (max > 0 ? (x / max) * (100 - w) : 0) + '%';
-    }
+    $('#navScroll').innerHTML = h;
   }
 
   function markNav(id) {
@@ -6332,20 +6291,34 @@ body,
       const on = a.getAttribute('data-id') === id;
       a.classList.toggle('on', on);
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
-      if (on && window.innerWidth > 620) {
-        /* 메뉴 줄만 가로로 옮긴다 — scrollIntoView는 고정 헤더 때문에 페이지 전체까지 굴려 버린다 */
-        const sc = $('#navScroll');
-        const r = a.getBoundingClientRect(), sr = sc.getBoundingClientRect();
-        sc.scrollBy({ left: (r.left + r.width / 2) - (sr.left + sr.width / 2), behavior: 'smooth' });
-      }
     });
-    setTimeout(navScrollSync, 420);   // 부드럽게 옮겨간 뒤의 위치로 맞춘다
+    /* 지금 메뉴가 사이드바 밖으로 밀려 있으면 사이드바 안에서만 옮긴다 — 페이지는 그대로 */
+    const sc = $('#nav'), a = $('.nav-item.on');
+    if (sc && a) {
+      const r = a.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+      if (r.top < sr.top + 8 || r.bottom > sr.bottom - 8) {
+        sc.scrollTop += (r.top + r.height / 2) - (sr.top + sr.height / 2);
+      }
+    }
   }
 
   /* ---------- 라우터 ---------- */
+  function syncNavBtn() {
+    const expanded = WIDE.matches
+      ? !document.documentElement.classList.contains('nav-collapsed')
+      : $('#nav').classList.contains('open');
+    $('#navBtn').setAttribute('aria-expanded', String(expanded));
+  }
+
+  function setDrawer(open) {
+    $('#nav').classList.toggle('open', open);
+    $('#navDim').hidden = !open;
+    document.documentElement.classList.toggle('nav-open', open);
+    syncNavBtn();
+  }
+
   function closeNav() {
-    $('#nav').classList.remove('open');
-    $('#navBtn').setAttribute('aria-expanded', 'false');
+    if ($('#nav').classList.contains('open')) setDrawer(false);
   }
 
   function route() {
@@ -6428,7 +6401,7 @@ body,
     if (chip) {
       const card = $('[data-mon-card="' + chip.getAttribute('data-mon') + '"]');
       if (card) {
-        const top = card.getBoundingClientRect().top + window.scrollY - 118;
+        const top = card.getBoundingClientRect().top + window.scrollY - ($('#hd').offsetHeight + 16);
         window.scrollTo({ top: top, behavior: 'smooth' });
         card.classList.add('flash');
         setTimeout(() => card.classList.remove('flash'), 1200);
@@ -6456,10 +6429,22 @@ body,
   });
 
   $('#navBtn').addEventListener('click', () => {
-    const nav = $('#nav');
-    const open = nav.classList.toggle('open');
-    $('#navBtn').setAttribute('aria-expanded', String(open));
+    if (WIDE.matches) {
+      const col = document.documentElement.classList.toggle('nav-collapsed');
+      lsSet(LS_NAV, col ? '1' : '0');
+      syncNavBtn();
+    } else {
+      const open = !$('#nav').classList.contains('open');
+      setDrawer(open);
+      if (open) { const cur = $('.nav-item.on') || $('.nav-item'); if (cur) cur.focus(); }
+    }
   });
+
+  $('#navDim').addEventListener('click', closeNav);
+
+  /* 화면 폭이 바뀌어 넓은 화면 ↔ 서랍 방식이 바뀌면 열린 서랍을 닫고 단추 상태를 맞춘다 */
+  const onWide = () => { closeNav(); syncNavBtn(); };
+  if (WIDE.addEventListener) WIDE.addEventListener('change', onWide); else WIDE.addListener(onWide);
 
   /* 본문 바로가기 — 주소(#/페이지)는 그대로 두고 초점만 본문으로 */
   $('.skip').addEventListener('click', e => {
@@ -6493,6 +6478,7 @@ body,
     if (IS_LOCAL) { const fs = $('.ft-sub'); if (fs) fs.hidden = false; }
     renderSocial();
     buildNav();
+    syncNavBtn();
     route();
   })();
 })();
