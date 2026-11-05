@@ -2285,7 +2285,7 @@
     const gens = new Set();
     PAGES.forEach(p => (p.blocks || []).forEach(b => {
       if (b.t === 'files') (b.items || []).forEach(i => files.add(i.path));
-      if (['rulegen', 'returngen', 'edugen', 'swgen', 'edzipgen'].indexOf(b.t) > -1) gens.add(b.t);
+      if (['rulegen', 'returngen', 'edugen', 'swgen', 'edzipgen', 'csgen', 'cabgen', 'wifigen'].indexOf(b.t) > -1) gens.add(b.t);
     }));
 
     let h = '';
@@ -2293,7 +2293,7 @@
          '<span class="hero-art" aria-hidden="true"></span>' +
          '<h1>디벗 업무, 순서대로 하나씩 처리하세요</h1>' +
          '<p>학교운영위원회 심의부터 계정 발급 · 기기 관리 · 반납과 양품화까지 — 디벗 담당 교사가 한 해 동안 해야 할 일을 ' +
-         '절차와 서식으로 정리했습니다. 위쪽 메뉴에서 업무를 고르면 준비물, 절차 체크리스트, 내려받을 서식이 함께 나옵니다.</p>' +
+         '절차와 서식으로 정리했습니다. 왼쪽 메뉴에서 업무를 고르면 준비물, 절차 체크리스트, 내려받을 서식이 함께 나옵니다.</p>' +
          '<div class="hero-meta">' +
          '<span>📁 업무 ' + jobs.length + '가지</span>' +
          '<span>📎 서식 ' + files.size + '종</span>' +
@@ -6397,7 +6397,7 @@ body,
 
   document.addEventListener('click', e => {
     const ck = e.target.closest('.ck-item');
-    if (ck) { toggleCheck(ck); return; }
+    if (ck) { if (!e.target.closest('a')) toggleCheck(ck); return; }   // 항목 안 링크를 누르면 이동만 (체크는 그대로)
 
     const chip = e.target.closest('.mon-chip');
     if (chip) {
@@ -6414,7 +6414,7 @@ body,
   document.addEventListener('keydown', e => {
     if (e.key !== ' ' && e.key !== 'Enter') return;
     const ck = e.target.closest && e.target.closest('.ck-item');
-    if (ck) { e.preventDefault(); toggleCheck(ck); }
+    if (ck && !e.target.closest('a')) { e.preventDefault(); toggleCheck(ck); }
   });
 
   let themeTimer = null;

@@ -75,7 +75,7 @@
 
 ## 메뉴 추가하는 방법
 
-`assets/js/data.js`의 `PAGES` 배열에 객체 하나를 추가하면 상단 메뉴와 홈 카드가
+`assets/js/data.js`의 `PAGES` 배열에 객체 하나를 추가하면 왼쪽 메뉴와 홈 카드가
 자동으로 만들어집니다.
 
 ```js
@@ -84,7 +84,7 @@
   no:11,
   em:'🧰',                    // 메뉴 아이콘 (이모지)
   title:'새 업무 이름',
-  short:'짧은 메뉴명',         // 상단 메뉴에 표시
+  short:'짧은 메뉴명',         // 왼쪽 메뉴에 표시
   tag:'doc',                  // doc | guide | check | link
   tagTxt:'문서 제작',
   summary:'한 줄 설명',
